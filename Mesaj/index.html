@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TıkMesaj - Gerçek Zamanlı Mesajlaşma Platformu</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #00D4AA;
+            --secondary-color: #00B894;
+            --accent-color: #FF6B9D;
+            --dark-bg: #1A1A2E;
+            --chat-bg: #16213E;
+            --sidebar-bg: #0F3460;
+            --message-bg: #00B894;
+            --received-bg: #2C3E50;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A0;
+            --border-color: #34495E;
+            --hover-bg: #34495E;
+            --error-color: #E74C3C;
+            --success-color: #2ECC71;
+            --warning-color: #F39C12;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg), var(--sidebar-bg));
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            min-height: 100vh;
+        }
+
+        /* Loading Animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Auth Screen */
+        .auth-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .auth-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .auth-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 10px 20px rgba(0, 212, 170, 0.3);
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .auth-title {
+            font-size: 24px;
+            color: var(--dark-bg);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .auth-subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            font-size: 16px;
+            color: var(--dark-bg);
+            background: white;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #999;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 10px 20px rgba(0, 212, 170, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(0, 212, 170, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            text-align: left;
+        }
+
+        .alert-error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--error-color);
+            color: var(--error-color);
+        }
+
+        .alert-success {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+        }
+
+        .alert-info {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid #3498DB;
+            color: #3498DB;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Connection Status */
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .connection-status.online {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .connection-status.offline {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .connection-status.connecting {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        /* Main App Container */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            max-width: 1600px;
+            margin: 0 auto;
+            background: var(--dark-bg);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .app-container.active {
+            opacity: 1;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            position: relative;
+        }
+
+        .online-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            background: var(--success-color);
+            border-radius: 50%;
+            border: 2px solid var(--sidebar-bg);
+        }
+
+        .user-info h3 {
+            color: var(--text-primary);
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+
+        .user-status {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .action-btn:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: var(--error-color);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* Search */
+        .search-container {
+            padding: 15px 20px;
+        }
+
+        .search-bar {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 20px 12px 45px;
+            border: none;
+            border-radius: 25px;
+            background: var(--hover-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        /* Chat List */
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.3s ease;
+            position: relative;
+        }
+
+        .chat-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .chat-item.active {
+            background: var(--hover-bg);
+            border-right: 3px solid var(--primary-color);
+        }
+
+        .chat-item .avatar {
+            margin-right: 15px;
+            width: 50px;
+            height: 50px;
+        }
+
+        .chat-info {
+            flex: 1;
+        }
+
+        .chat-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+
+        .chat-preview {
+            color: var(--text-secondary);
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+
+        .chat-time {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .unread-count {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            padding: 4px 8px;
+            font-size: 12px;
+            min-width: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* Main Chat Area */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--chat-bg);
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .chat-header-info {
+            flex: 1;
+        }
+
+        .chat-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+            font-size: 18px;
+        }
+
+        .chat-status {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .typing-indicator {
+            color: var(--primary-color);
+            font-style: italic;
+        }
+
+        /* Messages */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill-opacity='0.02'%3E%3Cpolygon fill='%2300D4AA' points='36 34 27 23 14 34'/%3E%3Cpolygon fill='%2300D4AA' points='36 14 27 3 14 14'/%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 15px;
+            animation: messageSlideIn 0.3s ease;
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message.received {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.sent .message-bubble {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.received .message-bubble {
+            background: var(--received-bg);
+            color: var(--text-primary);
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-text {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            text-align: right;
+        }
+
+        .message.sent .message-time {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .message.received .message-time {
+            color: var(--text-secondary);
+        }
+
+        /* Message Input */
+        .message-input-container {
+            padding: 20px;
+            background: var(--sidebar-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            background: var(--hover-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            resize: none;
+            max-height: 100px;
+        }
+
+        .message-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 18px;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 212, 170, 0.4);
+        }
+
+        .send-btn:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Welcome Screen */
+        .welcome-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--chat-bg);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .welcome-logo {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .welcome-logo .logo-icon {
+            width: 80px;
+            height: 80px;
+            font-size: 36px;
+        }
+
+        .welcome-logo .logo-text {
+            font-size: 42px;
+        }
+
+        .welcome-title {
+            font-size: 28px;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            font-weight: 300;
+        }
+
+        .welcome-subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+            line-height: 1.6;
+            max-width: 400px;
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--sidebar-bg);
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .modal .form-input {
+            background: var(--hover-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .modal .form-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal .btn {
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        /* Requests List */
+        .requests-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .request-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: var(--hover-bg);
+        }
+
+        .request-item .avatar {
+            margin-right: 15px;
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+        }
+
+        .request-info {
+            flex: 1;
+        }
+
+        .request-name {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .request-email {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .request-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .request-btn.accept {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .request-btn.decline {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .request-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: absolute;
+                z-index: 100;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .chat-container {
+                width: 100%;
+            }
+
+            .auth-container {
+                margin: 20px;
+                padding: 30px;
+            }
+        }
+
+        .realtime-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success-color);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="connection-status connecting" id="connectionStatus">
+        <i class="fas fa-wifi"></i> Bağlanıyor...
+    </div>
+
+    <!-- Real-time Indicator -->
+    <div class="realtime-indicator" id="realtimeIndicator">
+        <i class="fas fa-bolt"></i> Gerçek Zamanlı
+    </div>
+
+    <!-- Auth Screen -->
+    <div class="auth-screen" id="authScreen">
+        <div class="auth-container">
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form-container">
+                <div class="auth-logo">
+                    <div class="logo-icon">TM</div>
+                    <div class="logo-text">TıkMesaj</div>
+                </div>
+                <h2 class="auth-title">Gerçek Zamanlı Giriş</h2>
+                <p class="auth-subtitle">Anında mesajlaşma platformuna hoş geldin</p>
+                
+                <div id="loginAlert"></div>
+                
+                <form class="auth-form" id="loginFormEl">
+                    <div class="form-group">
+                        <input type="text" class="form-input" id="loginUsername" placeholder="Kullanıcı adın" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" class="form-input" id="loginPassword" placeholder="Şifren" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="loginBtn">Giriş Yap</button>
+                    <button type="button" class="btn btn-secondary" id="showRegisterBtn">Hesap Oluştur</button>
+                </form>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form-container hidden">
+                <div class="auth-logo">
+                    <div class="logo-icon">TM</div>
+                    <div class="logo-text">TıkMesaj</div>
+                </div>
+                <h2 class="auth-title">Hesap Oluştur</h2>
+                <p class="auth-subtitle">Gerçek zamanlı mesajlaşma ailesine katıl</p>
+                
+                <div id="registerAlert"></div>
+                
+                <form class="auth-form" id="registerFormEl">
+                    <div class="form-group">
+                        <input type="text" class="form-input" id="registerName" placeholder="Adın ve soyadın" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-input" id="registerUsername" placeholder="Kullanıcı adın" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" class="form-input" id="registerPassword" placeholder="Şifren (en az 6 karakter)" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="registerBtn">Hesap Oluştur</button>
+                    <button type="button" class="btn btn-secondary" id="showLoginBtn">Giriş Yap</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="user-profile">
+                    <div class="avatar" id="userAvatar">
+                        <div class="online-indicator"></div>
+                    </div>
+                    <div class="user-info">
+                        <h3 id="userName">Kullanıcı</h3>
+                        <div class="user-status">Çevrimiçi</div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" id="requestsBtn" title="Arkadaşlık İstekleri">
+                        <i class="fas fa-user-clock"></i>
+                        <div class="notification-badge hidden" id="requestsBadge">0</div>
+                    </button>
+                    <button class="action-btn" id="addContactBtn" title="Kişi Ekle">
+                        <i class="fas fa-user-plus"></i>
+                    </button>
+                    <button class="action-btn" id="logoutBtn" title="Çıkış Yap">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <div class="search-bar">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" id="searchInput" placeholder="Sohbet ara...">
+                </div>
+            </div>
+
+            <div class="chat-list" id="chatList">
+                <!-- Chat items will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container" id="chatContainer">
+            <!-- Welcome Screen (shown when no chat is selected) -->
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-logo">
+                    <div class="logo-icon">TM</div>
+                    <div class="logo-text">TıkMesaj</div>
+                </div>
+                <h1 class="welcome-title">Gerçek Zamanlı TıkMesaj</h1>
+                <p class="welcome-subtitle">
+                    Arkadaşlarınla anında mesajlaş, gerçek zamanlı bildirimler al ve her an bağlı kal.
+                    Firebase Realtime Database ile tamamen canlı bir deneyim!
+                </p>
+            </div>
+
+            <!-- Active Chat (shown when a chat is selected) -->
+            <div class="active-chat hidden" id="activeChat">
+                <div class="chat-header">
+                    <div class="avatar" id="chatAvatar"></div>
+                    <div class="chat-header-info">
+                        <div class="chat-title" id="chatTitle">Sohbet</div>
+                        <div class="chat-status" id="chatStatus">Çevrimdışı</div>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn" title="Sesli Arama">
+                            <i class="fas fa-phone"></i>
+                        </button>
+                        <button class="action-btn" title="Görüntülü Arama">
+                            <i class="fas fa-video"></i>
+                        </button>
+                        <button class="action-btn" title="Sohbet Ayarları">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="messages-container" id="messagesContainer">
+                    <!-- Messages will be dynamically added here -->
+                </div>
+
+                <div class="message-input-container">
+                    <button class="action-btn" title="Dosya Ekle">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <textarea class="message-input" id="messageInput" placeholder="Mesajını yaz..."></textarea>
+                    <button class="send-btn" id="sendBtn" disabled>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Friend Requests Modal -->
+    <div class="modal" id="requestsModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Arkadaşlık İstekleri</h3>
+            <div id="requestsAlert"></div>
+            <div class="requests-list" id="requestsList">
+                <!-- Friend requests will be dynamically added here -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="closeRequestsBtn">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Contact Modal -->
+    <div class="modal" id="addContactModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Kişi Ekle</h3>
+            <div id="contactAlert"></div>
+            <form id="addContactForm">
+                <div class="form-group">
+                    <label class="form-label">Kullanıcı Adı</label>
+                    <input type="text" class="form-input" id="contactUsername" placeholder="@kullaniciadi" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelContactBtn">İptal</button>
+                    <button type="submit" class="btn btn-primary">İstek Gönder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Real-time TıkMesaj Application with Firebase
+        class RealtimeTikMesajApp {
+            constructor() {
+                this.currentUser = null;
+                this.firebaseApp = null;
+                this.auth = null;
+                this.database = null;
+                this.isOnline = false;
+                this.activeChatId = null;
+                this.contacts = new Map();
+                this.chats = new Map();
+                this.messages = new Map();
+                this.friendRequests = new Map();
+                this.typingUsers = new Set();
+                this.typingTimeout = null;
+                
+                // Initialize Firebase
+                this.initializeFirebase();
+                this.init();
+            }
+
+            initializeFirebase() {
+                const firebaseConfig = {
+                    apiKey: "AIzaSyCOVl0dstQ0E-4QRVt4-DKwCHzWU3EATiM",
+                    authDomain: "tiklamesaj.firebaseapp.com",
+                    databaseURL: "https://tiklamesaj-default-rtdb.firebaseio.com",
+                    projectId: "tiklamesaj",
+                    storageBucket: "tiklamesaj.firebasestorage.app",
+                    messagingSenderId: "806208705799",
+                    appId: "1:806208705799:web:a4d7bc456eefac0b06a1a2",
+                    measurementId: "G-4XRH03M788"
+                };
+
+                this.firebaseApp = firebase.initializeApp(firebaseConfig);
+                this.auth = firebase.auth();
+                this.database = firebase.database();
+                
+                // Set up connection state listener
+                firebase.database().ref('.info/connected').on('value', (snapshot) => {
+                    this.isOnline = snapshot.val() === true;
+                    this.updateConnectionStatus(this.isOnline ? 'online' : 'offline');
+                });
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.checkAuthStatus();
+                this.hideLoading();
+            }
+
+            setupEventListeners() {
+                // Auth Forms
+                document.getElementById('loginFormEl').addEventListener('submit', (e) => this.handleLogin(e));
+                document.getElementById('registerFormEl').addEventListener('submit', (e) => this.handleRegister(e));
+                
+                // Form Switches
+                document.getElementById('showRegisterBtn').addEventListener('click', () => this.showRegisterForm());
+                document.getElementById('showLoginBtn').addEventListener('click', () => this.showLoginForm());
+                
+                // App Controls
+                document.getElementById('requestsBtn').addEventListener('click', () => this.showRequestsModal());
+                document.getElementById('addContactBtn').addEventListener('click', () => this.showAddContactModal());
+                document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+                
+                // Modals
+                document.getElementById('closeRequestsBtn').addEventListener('click', () => this.hideModal('requestsModal'));
+                document.getElementById('cancelContactBtn').addEventListener('click', () => this.hideModal('addContactModal'));
+                
+                document.getElementById('addContactForm').addEventListener('submit', (e) => this.handleAddContact(e));
+                
+                // Message Input
+                const messageInput = document.getElementById('messageInput');
+                const sendBtn = document.getElementById('sendBtn');
+                
+                messageInput.addEventListener('input', () => {
+                    sendBtn.disabled = !messageInput.value.trim();
+                    this.handleTyping();
+                });
+                
+                messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+                
+                sendBtn.addEventListener('click', () => this.sendMessage());
+                
+                // Search
+                document.getElementById('searchInput').addEventListener('input', (e) => this.handleSearch(e.target.value));
+                
+                // Modal Background Clicks
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            this.hideModal(modal.id);
+                        }
+                    });
+                });
+            }
+
+            checkAuthStatus() {
+                this.auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        // User is signed in
+                        this.database.ref(`users/${user.uid}`).once('value').then((snapshot) => {
+                            const userData = snapshot.val();
+                            if (userData) {
+                                this.currentUser = {
+                                    id: user.uid,
+                                    name: userData.name,
+                                    username: userData.username,
+                                    avatar: userData.avatar || this.generateAvatarInitials(userData.name)
+                                };
+                                localStorage.setItem('tikMesajUser', JSON.stringify(this.currentUser));
+                                this.showApp();
+                            }
+                        });
+                    } else {
+                        // User is signed out
+                        this.showAuth();
+                    }
+                });
+            }
+
+            showAuth() {
+                document.getElementById('authScreen').style.display = 'flex';
+                document.getElementById('appContainer').classList.remove('active');
+            }
+
+            showApp() {
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('appContainer').classList.add('active');
+                this.initializeApp();
+            }
+
+            hideLoading() {
+                document.getElementById('loadingOverlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                }, 500);
+            }
+
+            updateConnectionStatus(status) {
+                const statusEl = document.getElementById('connectionStatus');
+                statusEl.className = `connection-status ${status}`;
+                
+                switch(status) {
+                    case 'online':
+                        statusEl.innerHTML = '<i class="fas fa-wifi"></i> Çevrimiçi';
+                        this.isOnline = true;
+                        break;
+                    case 'offline':
+                        statusEl.innerHTML = '<i class="fas fa-wifi"></i> Çevrimdışı';
+                        this.isOnline = false;
+                        break;
+                    case 'connecting':
+                        statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Bağlanıyor...';
+                        this.isOnline = false;
+                        break;
+                }
+            }
+
+            setupFirebaseListeners() {
+                if (!this.currentUser) return;
+
+                // Listen for new messages
+                this.database.ref(`userMessages/${this.currentUser.id}`).on('child_added', (snapshot) => {
+                    const message = snapshot.val();
+                    this.handleNewMessage(message);
+                });
+
+                // Listen for friend requests
+                this.database.ref(`friendRequests/${this.currentUser.id}`).on('child_added', (snapshot) => {
+                    const request = snapshot.val();
+                    this.handleFriendRequest(request);
+                });
+
+                // Listen for typing indicators
+                this.database.ref(`typingIndicators/${this.currentUser.id}`).on('child_changed', (snapshot) => {
+                    const typingData = snapshot.val();
+                    this.handleUserTyping(typingData);
+                });
+
+                // Listen for online status changes of contacts
+                this.database.ref('onlineStatus').on('child_changed', (snapshot) => {
+                    const userId = snapshot.key;
+                    const isOnline = snapshot.val();
+                    this.updateUserOnlineStatus(userId, isOnline);
+                });
+            }
+
+            handleNewMessage(message) {
+                // Add message to local storage
+                if (!this.messages.has(message.chatId)) {
+                    this.messages.set(message.chatId, []);
+                }
+                this.messages.get(message.chatId).push(message);
+                
+                // Update chat last message
+                const chat = this.chats.get(message.chatId);
+                if (chat) {
+                    chat.lastMessage = message.text;
+                    chat.lastMessageTime = message.timestamp;
+                    
+                    // Increment unread count if not the active chat or not sent by current user
+                    if (message.senderId !== this.currentUser.id && this.activeChatId !== message.chatId) {
+                        chat.unreadCount++;
+                    }
+                }
+                
+                // Update UI if this is the active chat
+                if (this.activeChatId === message.chatId) {
+                    this.renderMessages(message.chatId);
+                }
+                
+                this.renderChatList();
+                
+                // Show notification if not active chat
+                if (this.activeChatId !== message.chatId && message.senderId !== this.currentUser.id) {
+                    this.showNotification(message);
+                }
+            }
+
+            handleFriendRequest(request) {
+                this.friendRequests.set(request.id, request);
+                this.updateRequestsBadge();
+                
+                // Show notification
+                this.showAlert('', `${request.fromUser.name} size arkadaşlık isteği gönderdi!`, 'info');
+            }
+
+            handleUserTyping(typingData) {
+                if (typingData.chatId === this.activeChatId && typingData.userId !== this.currentUser.id) {
+                    const statusEl = document.getElementById('chatStatus');
+                    if (typingData.isTyping) {
+                        statusEl.textContent = 'yazıyor...';
+                        statusEl.classList.add('typing-indicator');
+                    } else {
+                        // Reset to original status
+                        const chat = this.chats.get(this.activeChatId);
+                        if (chat) {
+                            this.updateChatHeader(chat);
+                        }
+                    }
+                }
+            }
+
+            updateUserOnlineStatus(userId, isOnline) {
+                // Update in contacts
+                const contact = this.contacts.get(userId);
+                if (contact) {
+                    contact.isOnline = isOnline;
+                    contact.lastSeen = new Date().toISOString();
+                }
+                
+                // Update in chats
+                for (const chat of this.chats.values()) {
+                    if (chat.contactId === userId) {
+                        chat.isOnline = isOnline;
+                        chat.lastSeen = new Date().toISOString();
+                    }
+                }
+                
+                // Update UI
+                this.renderChatList();
+                if (this.activeChatId) {
+                    const chat = this.chats.get(this.activeChatId);
+                    if (chat && chat.contactId === userId) {
+                        this.updateChatHeader(chat);
+                    }
+                }
+            }
+
+            showNotification(message) {
+                if (Notification.permission === 'granted') {
+                    const chat = this.chats.get(message.chatId);
+                    new Notification(`${chat ? chat.name : 'Yeni Mesaj'}`, {
+                        body: message.text,
+                        icon: '/favicon.ico'
+                    });
+                }
+            }
+
+            // Auth Methods
+            showLoginForm() {
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                this.clearAlerts();
+            }
+
+            showRegisterForm() {
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('registerForm').classList.remove('hidden');
+                this.clearAlerts();
+            }
+
+            async handleLogin(e) {
+                e.preventDefault();
+                const username = document.getElementById('loginUsername').value;
+                const password = document.getElementById('loginPassword').value;
+                
+                this.setLoading('loginBtn', true);
+                
+                try {
+                    const userCredential = await this.auth.signInWithEmailAndPassword(
+                        `${username}@tikmesaj.com`,
+                        password
+                    );
+                    
+                    // Get additional user data from Realtime Database
+                    const userSnapshot = await this.database.ref(`users/${userCredential.user.uid}`).once('value');
+                    const userData = userSnapshot.val();
+                    
+                    this.currentUser = {
+                        id: userCredential.user.uid,
+                        name: userData.name,
+                        username: userData.username,
+                        avatar: userData.avatar || this.generateAvatarInitials(userData.name)
+                    };
+                    
+                    localStorage.setItem('tikMesajUser', JSON.stringify(this.currentUser));
+                    this.showApp();
+                    
+                } catch (error) {
+                    this.showAlert('loginAlert', this.translateFirebaseError(error), 'error');
+                } finally {
+                    this.setLoading('loginBtn', false);
+                }
+            }
+
+            async handleRegister(e) {
+                e.preventDefault();
+                const name = document.getElementById('registerName').value;
+                const username = document.getElementById('registerUsername').value;
+                const password = document.getElementById('registerPassword').value;
+                
+                this.setLoading('registerBtn', true);
+                
+                try {
+                    // Check if username exists
+                    const usernameSnapshot = await this.database.ref(`usernames/${username}`).once('value');
+                    if (usernameSnapshot.exists()) {
+                        throw new Error('Bu kullanıcı adı zaten alınmış!');
+                    }
+                    
+                    // Create auth user
+                    const userCredential = await this.auth.createUserWithEmailAndPassword(
+                        `${username}@tikmesaj.com`,
+                        password
+                    );
+                    
+                    // Create user data in database
+                    const userData = {
+                        name: name,
+                        username: username,
+                        avatar: this.generateAvatarInitials(name),
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    };
+                    
+                    await this.database.ref(`users/${userCredential.user.uid}`).set(userData);
+                    await this.database.ref(`usernames/${username}`).set(userCredential.user.uid);
+                    
+                    this.currentUser = {
+                        id: userCredential.user.uid,
+                        ...userData
+                    };
+                    
+                    localStorage.setItem('tikMesajUser', JSON.stringify(this.currentUser));
+                    this.showApp();
+                    
+                } catch (error) {
+                    this.showAlert('registerAlert', this.translateFirebaseError(error), 'error');
+                } finally {
+                    this.setLoading('registerBtn', false);
+                }
+            }
+
+            logout() {
+                this.auth.signOut().then(() => {
+                    localStorage.removeItem('tikMesajUser');
+                    this.currentUser = null;
+                    this.activeChatId = null;
+                    this.contacts.clear();
+                    this.chats.clear();
+                    this.messages.clear();
+                    this.friendRequests.clear();
+                    
+                    // Remove all Firebase listeners
+                    if (this.database) {
+                        this.database.ref(`userMessages/${this.currentUser?.id}`).off();
+                        this.database.ref(`friendRequests/${this.currentUser?.id}`).off();
+                        this.database.ref(`typingIndicators/${this.currentUser?.id}`).off();
+                        this.database.ref('onlineStatus').off();
+                    }
+                    
+                    this.showAuth();
+                    this.showLoginForm();
+                });
+            }
+
+            // App Initialization
+            initializeApp() {
+                this.updateUserInfo();
+                this.setupFirebaseListeners();
+                this.loadFriendRequests();
+                this.addSupportContact();
+                this.renderChatList();
+                this.requestNotificationPermission();
+                
+                // Set online status
+                this.database.ref(`onlineStatus/${this.currentUser.id}`).set(true);
+                this.database.ref(`onlineStatus/${this.currentUser.id}`).onDisconnect().set(false);
+            }
+
+            requestNotificationPermission() {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+            }
+
+            updateUserInfo() {
+                if (!this.currentUser) return;
+                
+                document.getElementById('userName').textContent = this.currentUser.name;
+                document.getElementById('userAvatar').textContent = this.currentUser.avatar;
+            }
+
+            async loadFriendRequests() {
+                try {
+                    const snapshot = await this.database.ref(`friendRequests/${this.currentUser.id}`).once('value');
+                    const requests = snapshot.val() || {};
+                    
+                    Object.values(requests).forEach(request => {
+                        this.friendRequests.set(request.id, request);
+                    });
+                    
+                    this.updateRequestsBadge();
+                } catch (error) {
+                    console.error('Arkadaşlık istekleri yüklenemedi:', error);
+                }
+            }
+
+            updateRequestsBadge() {
+                const badge = document.getElementById('requestsBadge');
+                const count = this.friendRequests.size;
+                
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            addSupportContact() {
+                // Add TıkMesaj Destek as a contact
+                const supportContact = {
+                    id: 'support_account',
+                    name: 'TıkMesaj Destek',
+                    username: 'tikmesajdestek',
+                    avatar: 'TD',
+                    status: 'Size yardımcı olmak için buradayız! 🎯',
+                    isOnline: true,
+                    lastSeen: new Date().toISOString()
+                };
+                
+                this.contacts.set(supportContact.id, supportContact);
+                this.createOrUpdateChat(`private_${supportContact.id}`, supportContact, 'private');
+                
+                // Add welcome message
+                if (this.currentUser.username !== 'tikmesajdestek') {
+                    this.addMessage(`private_${supportContact.id}`, {
+                        id: Date.now().toString(),
+                        senderId: supportContact.id,
+                        text: `Merhaba ${this.currentUser.name}! TıkMesaj'a hoş geldin. Size nasıl yardımcı olabilirim? 😊`,
+                        timestamp: new Date().toISOString(),
+                        type: 'text'
+                    });
+                }
+            }
+
+            createOrUpdateChat(chatId, contact, type = 'private') {
+                const existingChat = this.chats.get(chatId);
+                if (existingChat) {
+                    existingChat.name = contact.name;
+                    existingChat.avatar = contact.avatar;
+                    existingChat.isOnline = contact.isOnline;
+                    existingChat.lastSeen = contact.lastSeen;
+                } else {
+                    const chat = {
+                        id: chatId,
+                        name: contact.name,
+                        avatar: contact.avatar,
+                        type: type,
+                        contactId: type === 'private' ? contact.id : null,
+                        isOnline: contact.isOnline || false,
+                        lastSeen: contact.lastSeen || new Date().toISOString(),
+                        lastMessage: null,
+                        lastMessageTime: null,
+                        unreadCount: 0,
+                        members: type === 'group' ? [] : [this.currentUser.id, contact.id]
+                    };
+                    
+                    this.chats.set(chatId, chat);
+                }
+            }
+
+            // Friend Request Methods
+            showRequestsModal() {
+                this.showModal('requestsModal');
+                this.renderFriendRequests();
+            }
+
+            renderFriendRequests() {
+                const requestsList = document.getElementById('requestsList');
+                requestsList.innerHTML = '';
+                
+                if (this.friendRequests.size === 0) {
+                    requestsList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Henüz arkadaşlık isteğin yok.</p>';
+                    return;
+                }
+                
+                this.friendRequests.forEach(request => {
+                    const requestElement = this.createRequestElement(request);
+                    requestsList.appendChild(requestElement);
+                });
+            }
+
+            createRequestElement(request) {
+                const div = document.createElement('div');
+                div.className = 'request-item';
+                div.innerHTML = `
+                    <div class="avatar">${request.fromUser.avatar}</div>
+                    <div class="request-info">
+                        <div class="request-name">${request.fromUser.name}</div>
+                        <div class="request-email">@${request.fromUser.username}</div>
+                    </div>
+                    <div class="request-actions">
+                        <button class="request-btn accept" onclick="app.acceptFriendRequest('${request.id}')">Kabul Et</button>
+                        <button class="request-btn decline" onclick="app.declineFriendRequest('${request.id}')">Reddet</button>
+                    </div>
+                `;
+                return div;
+            }
+
+            async acceptFriendRequest(requestId) {
+                const request = this.friendRequests.get(requestId);
+                if (!request) return;
+                
+                try {
+                    // Create chat between users
+                    const chatId = `private_${request.fromUserId}_${this.currentUser.id}`;
+                    const chatData = {
+                        id: chatId,
+                        type: 'private',
+                        members: [request.fromUserId, this.currentUser.id],
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    };
+                    
+                    // Add chat to both users
+                    await this.database.ref(`userChats/${request.fromUserId}/${chatId}`).set(true);
+                    await this.database.ref(`userChats/${this.currentUser.id}/${chatId}`).set(true);
+                    
+                    // Add contact to both users
+                    const contactData = {
+                        id: this.currentUser.id,
+                        name: this.currentUser.name,
+                        username: this.currentUser.username,
+                        avatar: this.currentUser.avatar
+                    };
+                    
+                    await this.database.ref(`userContacts/${request.fromUserId}/${this.currentUser.id}`).set(contactData);
+                    
+                    // Remove friend request
+                    await this.database.ref(`friendRequests/${this.currentUser.id}/${requestId}`).remove();
+                    
+                    // Add to local state
+                    this.friendRequests.delete(requestId);
+                    this.updateRequestsBadge();
+                    this.renderFriendRequests();
+                    
+                    this.showAlert('requestsAlert', `${request.fromUser.name} arkadaş listenize eklendi!`, 'success');
+                    
+                } catch (error) {
+                    console.error('Arkadaşlık isteği kabul edilirken hata:', error);
+                    this.showAlert('requestsAlert', 'Bir hata oluştu, lütfen tekrar deneyin.', 'error');
+                }
+            }
+
+            async declineFriendRequest(requestId) {
+                try {
+                    await this.database.ref(`friendRequests/${this.currentUser.id}/${requestId}`).remove();
+                    this.friendRequests.delete(requestId);
+                    this.updateRequestsBadge();
+                    this.renderFriendRequests();
+                    
+                    this.showAlert('requestsAlert', 'Arkadaşlık isteği reddedildi.', 'info');
+                } catch (error) {
+                    console.error('Arkadaşlık isteği reddedilirken hata:', error);
+                    this.showAlert('requestsAlert', 'Bir hata oluştu, lütfen tekrar deneyin.', 'error');
+                }
+            }
+
+            async handleAddContact(e) {
+                e.preventDefault();
+                const username = document.getElementById('contactUsername').value.replace('@', '');
+                
+                try {
+                    // Check if user exists
+                    const usernameSnapshot = await this.database.ref(`usernames/${username}`).once('value');
+                    if (!usernameSnapshot.exists()) {
+                        throw new Error('Bu kullanıcı adıyla kullanıcı bulunamadı!');
+                    }
+                    
+                    const userId = usernameSnapshot.val();
+                    const userSnapshot = await this.database.ref(`users/${userId}`).once('value');
+                    const user = userSnapshot.val();
+                    
+                    if (userId === this.currentUser.id) {
+                        throw new Error('Kendinize arkadaşlık isteği gönderemezsiniz!');
+                    }
+                    
+                    if (this.contacts.has(userId)) {
+                        throw new Error('Bu kullanıcı zaten arkadaş listenizde!');
+                    }
+                    
+                    // Create friend request
+                    const requestId = this.database.ref().child('friendRequests').push().key;
+                    const request = {
+                        id: requestId,
+                        fromUserId: this.currentUser.id,
+                        toUserId: userId,
+                        fromUser: {
+                            id: this.currentUser.id,
+                            name: this.currentUser.name,
+                            username: this.currentUser.username,
+                            avatar: this.currentUser.avatar
+                        },
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        status: 'pending'
+                    };
+                    
+                    await this.database.ref(`friendRequests/${userId}/${requestId}`).set(request);
+                    
+                    this.showAlert('contactAlert', 'Arkadaşlık isteği gönderildi!', 'success');
+                    setTimeout(() => this.hideModal('addContactModal'), 1500);
+                    
+                } catch (error) {
+                    this.showAlert('contactAlert', error.message, 'error');
+                }
+            }
+
+            renderChatList() {
+                const chatList = document.getElementById('chatList');
+                chatList.innerHTML = '';
+                
+                // Convert chats to array and sort by last message time
+                const chatsArray = Array.from(this.chats.values()).sort((a, b) => {
+                    const aTime = a.lastMessageTime ? new Date(a.lastMessageTime) : new Date(0);
+                    const bTime = b.lastMessageTime ? new Date(b.lastMessageTime) : new Date(0);
+                    return bTime - aTime;
+                });
+                
+                chatsArray.forEach(chat => {
+                    const chatElement = this.createChatElement(chat);
+                    chatList.appendChild(chatElement);
+                });
+            }
+
+            createChatElement(chat) {
+                const div = document.createElement('div');
+                div.className = `chat-item ${this.activeChatId === chat.id ? 'active' : ''}`;
+                div.dataset.chatId = chat.id;
+                
+                const lastMessageTime = chat.lastMessageTime ? 
+                    this.formatTime(new Date(chat.lastMessageTime)) : '';
+                
+                const lastMessagePreview = chat.lastMessage || 'Henüz mesaj yok';
+                
+                div.innerHTML = `
+                    <div class="avatar">
+                        ${chat.avatar}
+                        ${chat.isOnline ? '<div class="online-indicator"></div>' : ''}
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">${chat.name}</div>
+                        <div class="chat-preview">${lastMessagePreview}</div>
+                    </div>
+                    <div class="chat-meta">
+                        ${lastMessageTime ? `<div class="chat-time">${lastMessageTime}</div>` : ''}
+                        ${chat.unreadCount > 0 ? `<div class="unread-count">${chat.unreadCount}</div>` : ''}
+                    </div>
+                `;
+                
+                div.addEventListener('click', () => this.openChat(chat.id));
+                
+                return div;
+            }
+
+            async openChat(chatId) {
+                this.activeChatId = chatId;
+                const chat = this.chats.get(chatId);
+                
+                if (!chat) return;
+                
+                // Mark messages as read
+                chat.unreadCount = 0;
+                
+                // Update UI
+                this.showActiveChat();
+                this.updateChatHeader(chat);
+                this.updateChatListSelection();
+                
+                // Load messages from server
+                await this.loadMessages(chatId);
+                
+                // Mark messages container scroll to bottom
+                setTimeout(() => {
+                    this.scrollToBottom();
+                }, 100);
+            }
+
+            async loadMessages(chatId) {
+                try {
+                    const snapshot = await this.database.ref(`chatMessages/${chatId}`).once('value');
+                    const messages = snapshot.val() || {};
+                    
+                    const messagesArray = Object.values(messages).sort((a, b) => 
+                        new Date(a.timestamp) - new Date(b.timestamp)
+                    );
+                    
+                    this.messages.set(chatId, messagesArray);
+                    this.renderMessages(chatId);
+                } catch (error) {
+                    console.error('Mesajlar yüklenemedi:', error);
+                }
+            }
+
+            showActiveChat() {
+                document.getElementById('welcomeScreen').classList.add('hidden');
+                document.getElementById('activeChat').classList.remove('hidden');
+            }
+
+            updateChatHeader(chat) {
+                document.getElementById('chatAvatar').textContent = chat.avatar;
+                document.getElementById('chatTitle').textContent = chat.name;
+                
+                const statusEl = document.getElementById('chatStatus');
+                if (chat.isOnline) {
+                    statusEl.textContent = 'Çevrimiçi';
+                    statusEl.classList.remove('typing-indicator');
+                } else {
+                    const lastSeen = new Date(chat.lastSeen);
+                    statusEl.textContent = `Son görülme: ${this.formatLastSeen(lastSeen)}`;
+                    statusEl.classList.remove('typing-indicator');
+                }
+            }
+
+            updateChatListSelection() {
+                document.querySelectorAll('.chat-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                const activeItem = document.querySelector(`[data-chat-id="${this.activeChatId}"]`);
+                if (activeItem) {
+                    activeItem.classList.add('active');
+                }
+            }
+
+            renderMessages(chatId) {
+                const messagesContainer = document.getElementById('messagesContainer');
+                messagesContainer.innerHTML = '';
+                
+                const messages = this.messages.get(chatId) || [];
+                
+                messages.forEach(message => {
+                    const messageElement = this.createMessageElement(message);
+                    messagesContainer.appendChild(messageElement);
+                });
+                
+                this.scrollToBottom();
+            }
+
+            createMessageElement(message) {
+                const div = document.createElement('div');
+                const isOwn = message.senderId === this.currentUser.id;
+                div.className = `message ${isOwn ? 'sent' : 'received'}`;
+                
+                const messageTime = this.formatTime(new Date(message.timestamp));
+                
+                div.innerHTML = `
+                    <div class="message-bubble">
+                        <div class="message-text">${this.escapeHtml(message.text)}</div>
+                        <div class="message-time">${messageTime}</div>
+                    </div>
+                `;
+                
+                return div;
+            }
+
+            sendMessage() {
+                const messageInput = document.getElementById('messageInput');
+                const text = messageInput.value.trim();
+                
+                if (!text || !this.activeChatId) return;
+                
+                // Create message object
+                const messageId = this.database.ref().child('messages').push().key;
+                const message = {
+                    id: messageId,
+                    chatId: this.activeChatId,
+                    senderId: this.currentUser.id,
+                    text: text,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    type: 'text'
+                };
+                
+                // Save message to chat
+                this.database.ref(`chatMessages/${this.activeChatId}/${messageId}`).set(message);
+                
+                // Update last message for all chat members
+                const chat = this.chats.get(this.activeChatId);
+                if (chat) {
+                    chat.members.forEach(memberId => {
+                        this.database.ref(`userMessages/${memberId}/${messageId}`).set(message);
+                    });
+                }
+                
+                messageInput.value = '';
+                document.getElementById('sendBtn').disabled = true;
+                
+                // Stop typing indicator
+                this.database.ref(`typingIndicators/${this.activeChatId}/${this.currentUser.id}`).set({
+                    isTyping: false,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+
+            addMessage(chatId, message) {
+                if (!this.messages.has(chatId)) {
+                    this.messages.set(chatId, []);
+                }
+                
+                const messages = this.messages.get(chatId);
+                messages.push(message);
+                
+                // Update chat last message
+                const chat = this.chats.get(chatId);
+                if (chat) {
+                    chat.lastMessage = message.text;
+                    chat.lastMessageTime = message.timestamp;
+                    
+                    // Increment unread count if not the active chat or not sent by current user
+                    if (message.senderId !== this.currentUser.id && this.activeChatId !== chatId) {
+                        chat.unreadCount++;
+                    }
+                }
+                
+                // Update UI if this is the active chat
+                if (this.activeChatId === chatId) {
+                    this.renderMessages(chatId);
+                }
+                
+                this.renderChatList();
+            }
+
+            handleTyping() {
+                if (this.activeChatId) {
+                    this.database.ref(`typingIndicators/${this.activeChatId}/${this.currentUser.id}`).set({
+                        isTyping: true,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    
+                    // Clear existing timeout
+                    clearTimeout(this.typingTimeout);
+                    
+                    // Stop typing after 2 seconds
+                    this.typingTimeout = setTimeout(() => {
+                        this.database.ref(`typingIndicators/${this.activeChatId}/${this.currentUser.id}`).update({
+                            isTyping: false
+                        });
+                    }, 2000);
+                }
+            }
+
+            handleSearch(query) {
+                const chatItems = document.querySelectorAll('.chat-item');
+                
+                chatItems.forEach(item => {
+                    const chatName = item.querySelector('.chat-name').textContent.toLowerCase();
+                    const chatPreview = item.querySelector('.chat-preview').textContent.toLowerCase();
+                    const searchTerm = query.toLowerCase();
+                    
+                    if (chatName.includes(searchTerm) || chatPreview.includes(searchTerm)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+
+            // Modal Methods
+            showAddContactModal() {
+                this.showModal('addContactModal');
+            }
+
+            showModal(modalId) {
+                document.getElementById(modalId).classList.add('active');
+            }
+
+            hideModal(modalId) {
+                document.getElementById(modalId).classList.remove('active');
+                this.clearModalForms();
+            }
+
+            clearModalForms() {
+                document.querySelectorAll('.modal form').forEach(form => form.reset());
+                document.querySelectorAll('.modal .alert').forEach(alert => alert.innerHTML = '');
+            }
+
+            // Utility Methods
+            showAlert(containerId, message, type) {
+                if (containerId) {
+                    const container = document.getElementById(containerId);
+                    container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+                } else {
+                    // Show global notification
+                    const notification = document.createElement('div');
+                    notification.className = `alert alert-${type}`;
+                    notification.style.position = 'fixed';
+                    notification.style.top = '80px';
+                    notification.style.right = '20px';
+                    notification.style.zIndex = '9999';
+                    notification.style.maxWidth = '300px';
+                    notification.textContent = message;
+                    
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 5000);
+                }
+            }
+
+            clearAlerts() {
+                document.querySelectorAll('[id$="Alert"]').forEach(alert => {
+                    alert.innerHTML = '';
+                });
+            }
+
+            setLoading(buttonId, loading) {
+                const button = document.getElementById(buttonId);
+                if (loading) {
+                    button.disabled = true;
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
+                } else {
+                    button.disabled = false;
+                    // Restore original text based on button ID
+                    const texts = {
+                        'loginBtn': 'Giriş Yap',
+                        'registerBtn': 'Hesap Oluştur'
+                    };
+                    button.innerHTML = texts[buttonId] || 'Tamam';
+                }
+            }
+
+            formatTime(date) {
+                const now = new Date();
+                const diff = now - date;
+                
+                if (diff < 24 * 60 * 60 * 1000) { // Less than 24 hours
+                    return date.toLocaleTimeString('tr-TR', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                } else if (diff < 7 * 24 * 60 * 60 * 1000) { // Less than 7 days
+                    return date.toLocaleDateString('tr-TR', { weekday: 'short' });
+                } else {
+                    return date.toLocaleDateString('tr-TR', { 
+                        day: '2-digit', 
+                        month: '2-digit' 
+                    });
+                }
+            }
+
+            formatLastSeen(date) {
+                const now = new Date();
+                const diff = now - date;
+                
+                if (diff < 60 * 1000) { // Less than 1 minute
+                    return 'az önce';
+                } else if (diff < 60 * 60 * 1000) { // Less than 1 hour
+                    const minutes = Math.floor(diff / (60 * 1000));
+                    return `${minutes} dakika önce`;
+                } else if (diff < 24 * 60 * 60 * 1000) { // Less than 24 hours
+                    const hours = Math.floor(diff / (60 * 60 * 1000));
+                    return `${hours} saat önce`;
+                } else {
+                    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+                    return `${days} gün önce`;
+                }
+            }
+
+            scrollToBottom() {
+                const container = document.getElementById('messagesContainer');
+                container.scrollTop = container.scrollHeight;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            generateAvatarInitials(name) {
+                return name.split(' ').map(part => part[0]).join('').toUpperCase();
+            }
+
+            translateFirebaseError(error) {
+                switch(error.code) {
+                    case 'auth/email-already-in-use':
+                        return 'Bu kullanıcı adı zaten alınmış!';
+                    case 'auth/invalid-email':
+                        return 'Geçersiz kullanıcı adı!';
+                    case 'auth/weak-password':
+                        return 'Şifre en az 6 karakter olmalı!';
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                        return 'Geçersiz kullanıcı adı veya şifre!';
+                    default:
+                        return error.message;
+                }
+            }
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.app = new RealtimeTikMesajApp();
+        });
+    </script>
+</body>
+</html>
